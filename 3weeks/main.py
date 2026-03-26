@@ -1,47 +1,51 @@
 import csv
+import pickle
 
 
-def process_mars_inventory(input_file, output_file):
+def process_mars_inventory(input_file, output_csv, output_bin):
     """
-    화성 기지 재고 목록을 읽어 인화성 지수가 높은 순으로 정렬하고,
-    0.7 이상인 위험 물질을 별도 파일로 저장하는 함수.
+    화성 기지 재고를 정렬하여 CSV 및 이진 파일로 저장하고,
+    이진 데이터의 원시 형태와 복구된 전체 내용을 출력함.
     """
     inventory_list = []
 
     try:
-        # 1. 파일 읽기 및 리스트 변환 (Standard Library 'csv' 사용)
+        # 1. CSV 파일 읽기
         with open(input_file, mode='r', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            inventory_list = list(reader)
+            reader = csv.reader(file) #csv데이터를 한 줄씩 읽어서 리스트로 변환
+            inventory_list = list(reader) # 전체 데이터를 한 번에 리스트로 저장
 
         if not inventory_list:
             print('데이터가 비어 있습니다.')
             return
 
-        header = inventory_list[0]
-        data = inventory_list[1:]
+        header = inventory_list[0] #첫번째 줄은 컬럼
+        data = inventory_list[1:] #실제 데이터 저장
 
-        # 2. 인화성(Flammability, 인덱스 4) 높은 순으로 정렬
-        # 대입문 = 앞뒤 공백 준수 및 람다 함수 활용
-        data.sort(key=lambda x: float(x[4]), reverse=True)
+        # 2. 인화성(인덱스 4) 기준 내림차순 정렬
+        data.sort(key=lambda x: float(x[4]), reverse=True) #인화성 값은 5번째 컬럼
+        sorted_all = [header] + data
 
-        # 3. 인화성 지수가 0.7 이상인 목록 필터링
-        danger_list = [row for row in data if float(row[4]) >= 0.7]
+        # 3. 정렬된 내용을 이진 파일(.bin)로 저장
+        with open(output_bin, mode='wb') as bin_file:
+            pickle.dump(sorted_all, bin_file)
+        print(f"✅ 이진 파일 저장 완료: '{output_bin}'")
 
-        # 4. 필터링된 목록 별도 출력
-        print('\n--- [위험] 인화성 0.7 이상 물질 목록 ---')
-        print(f'{header[0]:<20} | {header[4]}')
-        print('-' * 35)
-        for row in danger_list:
-            print(f'{row[0]:<20} | {row[4]}')
+        # 4. 저장된 이진 파일 다시 읽어서 전체 출력
+        with open(output_bin, mode='rb') as bin_file:
+            loaded_data = pickle.load(bin_file)
+        
+        print('\n--- [이진 파일에서 복구된 전체 내용] ---')
+        for row in loaded_data:
+            print(row)
 
-        # 5. CSV 포맷으로 저장 (외부 패키지 없이 기본 csv.writer 사용)
-        with open(output_file, mode='w', encoding='utf-8', newline='') as file:
-            writer = csv.writer(file)
+        # 5. 인화성 0.7 이상 필터링 및 CSV 저장
+        danger_list = [row for row in data if float(row[4]) >= 0.7] 
+        with open(output_csv, mode='w', encoding='utf-8', newline='') as csv_file:
+            writer = csv.writer(csv_file)
             writer.writerow(header)
             writer.writerows(danger_list)
-
-        print(f"\n✅ 완료: '{output_file}' 파일이 생성되었습니다.")
+        print(f"\n✅ 위험 물질 CSV 저장 완료: '{output_csv}'")
 
     except FileNotFoundError:
         print(f"❌ 오류: '{input_file}' 파일을 찾을 수 없습니다.")
@@ -50,8 +54,8 @@ def process_mars_inventory(input_file, output_file):
 
 
 if __name__ == '__main__':
-    # 상수 정의 및 함수 실행
-    INPUT_CSV = 'Mars_Base_Inventory_List.csv'
-    OUTPUT_CSV = 'Mars_Base_Inventory_danger.csv'
+    INPUT_FILE = 'Mars_Base_Inventory_List.csv'
+    DANGER_CSV = 'Mars_Base_Inventory_danger.csv'
+    DATA_BIN = 'Mars_Base_Inventory_List.bin'
 
-    process_mars_inventory(INPUT_CSV, OUTPUT_CSV)
+    process_mars_inventory(INPUT_FILE, DANGER_CSV, DATA_BIN)
