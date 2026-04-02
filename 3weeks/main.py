@@ -51,6 +51,7 @@ def process_mars_inventory(input_file, output_csv, output_bin):
         print(f"❌ 오류: '{input_file}' 파일을 찾을 수 없습니다.")
     except Exception as e:
         print(f'❌ 오류 발생: {e}')
+        dkfsldjfsldfj
 
 
 if __name__ == '__main__':
