@@ -15,12 +15,14 @@ from PyQt5.QtWidgets import (
 class CalculatorUI(QWidget):
     '''
     아이폰 계산기와 유사한 형태의 UI를 구성하는 클래스
-    계산 기능은 구현하지 않고 버튼 입력만 화면에 표시한다.
+    4칙 연산이 가능하도록 구현한다.
     '''
 
     def __init__(self):
         super().__init__()
         self.current_input = '0'
+        self.expression = ''
+        self.just_evaluated = False
         self._setup_window()
         self._setup_ui()
 
@@ -157,17 +159,134 @@ class CalculatorUI(QWidget):
     def _handle_button_click(self, value):
         '''
         버튼 입력 이벤트 처리
-        숫자와 기호를 화면에 표시한다.
-        실제 계산은 수행하지 않는다.
         '''
-        if value == 'AC':
-            self.current_input = '0'
-        elif self.current_input == '0':
+        if value in '0123456789':
+            self._input_number(value)
+        elif value == '.':
+            self._input_decimal()
+        elif value in ('+', '−', '×', '÷'):
+            self._input_operator(value)
+        elif value == '=':
+            self._calculate_result()
+        elif value == 'AC':
+            self._clear_all()
+        elif value == '+/-':
+            self._toggle_sign()
+        elif value == '%':
+            self._apply_percent()
+
+        self.display.setText(self.current_input)
+
+    def _input_number(self, value):
+        '''
+        숫자 입력 처리
+        '''
+        if self.just_evaluated:
+            self.current_input = value
+            self.expression = ''
+            self.just_evaluated = False
+            return
+
+        if self.current_input == '0':
             self.current_input = value
         else:
             self.current_input += value
 
-        self.display.setText(self.current_input)
+    def _input_decimal(self):
+        '''
+        소수점 입력 처리
+        '''
+        if self.just_evaluated:
+            self.current_input = '0.'
+            self.expression = ''
+            self.just_evaluated = False
+            return
+
+        if '.' not in self.current_input:
+            self.current_input += '.'
+
+    def _input_operator(self, operator_symbol):
+        '''
+        연산자 입력 처리
+        '''
+        operator_map = {
+            '+': '+',
+            '−': '-',
+            '×': '*',
+            '÷': '/',
+        }
+
+        if self.just_evaluated:
+            self.expression = self.current_input
+            self.just_evaluated = False
+        else:
+            self.expression += self.current_input
+
+        if self.expression and self.expression[-1] in '+-*/':
+            self.expression = self.expression[:-1]
+
+        self.expression += operator_map[operator_symbol]
+        self.current_input = '0'
+
+    def _calculate_result(self):
+        '''
+        수식을 계산하여 결과를 표시
+        '''
+        if self.just_evaluated:
+            return
+
+        full_expression = self.expression + self.current_input
+
+        try:
+            result = eval(full_expression, {'__builtins__': None}, {})
+            if isinstance(result, float) and result.is_integer():
+                result = int(result)
+            self.current_input = str(result)
+            self.expression = ''
+            self.just_evaluated = True
+        except ZeroDivisionError:
+            self.current_input = 'Error'
+            self.expression = ''
+            self.just_evaluated = True
+        except Exception:
+            self.current_input = 'Error'
+            self.expression = ''
+            self.just_evaluated = True
+
+    def _clear_all(self):
+        '''
+        계산기 초기화
+        '''
+        self.current_input = '0'
+        self.expression = ''
+        self.just_evaluated = False
+
+    def _toggle_sign(self):
+        '''
+        현재 숫자의 부호 변경
+        '''
+        if self.current_input == '0' or self.current_input == 'Error':
+            return
+
+        if self.current_input.startswith('-'):
+            self.current_input = self.current_input[1:]
+        else:
+            self.current_input = '-' + self.current_input
+
+    def _apply_percent(self):
+        '''
+        현재 숫자를 백분율 값으로 변환
+        '''
+        if self.current_input == 'Error':
+            return
+
+        try:
+            value = float(self.current_input) / 100
+            if value.is_integer():
+                value = int(value)
+            self.current_input = str(value)
+        except ValueError:
+            self.current_input = 'Error'
 
 
 if __name__ == '__main__':
